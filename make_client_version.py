@@ -49,6 +49,23 @@ def must(selector, root=None):
     return el
 
 
+# единый набор иконок (тонкий штрих 1.8, currentColor) вместо эмодзи
+_ICON_PATHS = {
+    "drop":  '<path d="M12 3.5c3.3 4 5.7 6.8 5.7 9.5a5.7 5.7 0 1 1-11.4 0c0-2.7 2.4-5.5 5.7-9.5z"/>',
+    "tool":  '<path d="M14.7 6.3a4.2 4.2 0 0 0-5.6 5.6L4 17v3h3l5.1-5.1a4.2 4.2 0 0 0 5.6-5.6L15 12 12 9l2.7-2.7z"/>',
+    "check": '<path d="M20 6.5 9.5 17 4 11.5"/>',
+    "bolt":  '<path d="M13 2.5 4 14h7l-1 7.5L19 10h-7l1-7.5z"/>',
+    "spark": '<path d="M12 3.5l1.7 4.6 4.6 1.7-4.6 1.7L12 16l-1.7-4.5-4.6-1.7 4.6-1.7L12 3.5z"/>',
+    "alert": '<path d="M10.3 4.3 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/>'
+             '<path d="M12 9.5v4.5"/><path d="M12 17.5h.01"/>',
+}
+
+
+def icon(name):
+    return ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+            'stroke-linecap="round" stroke-linejoin="round">' + _ICON_PATHS[name] + '</svg>')
+
+
 # ---------- 1. Удаляем учебные элементы ----------
 kill(
     ".coursework-static-note",          # плашка «Статичная учебная копия»
@@ -84,15 +101,7 @@ aside.insert_after(*frag(
     '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Документы</div>'
     '<h3 class="oc-aside-title">Архив квартиры — 12 файлов</h3>'
     '<p class="oc-aside-text">Выписка ЕГРН, акты мастеров, полис и договоры — в одном месте.</p>'
-    '<em class="oc-cta oc-cta-light">Открыть архив</em></div>'
-    '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Кредит</div>'
-    '<h3 class="oc-aside-title">Кредит под залог квартиры</h3>'
-    '<p class="oc-aside-text">До 7,4 млн ₽ под залог вашей квартиры — решение онлайн.</p>'
-    '<em class="oc-cta oc-cta-light">Рассчитать</em></div>'
-    '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Дом и район</div>'
-    '<h3 class="oc-aside-title">Ваш дом: рейтинг 4,6</h3>'
-    '<p class="oc-aside-text">Плановое отключение горячей воды 15–17 июня — напомним заранее.</p>'
-    '<em class="oc-cta oc-cta-light">Все события дома</em></div>'))
+    '<em class="oc-cta oc-cta-light">Открыть архив</em></div>'))
 
 # ---------- 3. Шапка: hero «Пульс дома» вместо сабтайтла-лендинга ----------
 head = must(".oc-after-head")
@@ -111,9 +120,9 @@ head.append(frag(
     '<b class="oc-pulse-num">1 из 3</b>'
     '<span class="oc-pulse-bar"><i style="width:33%"></i></span>'
     '<span class="oc-pulse-note">следующее — показания до 25 мая</span></div>'
-    '<div class="oc-pulse-tile"><span class="oc-pulse-label">Сэкономлено с Домклик</span>'
+    '<div class="oc-pulse-tile"><span class="oc-pulse-label">Экономия за год</span>'
     '<b class="oc-pulse-num">3 412 ₽</b>'
-    '<span class="oc-pulse-note">за 2026 год · пеней 0 ₽</span></div>'
+    '<span class="oc-pulse-note">автоплатёж и скидки мастеров</span></div>'
     '</div></div>')[0])
 
 # ---------- 4. «Сегодня по дому»: статусы + три задачи с кнопками ----------
@@ -127,16 +136,16 @@ if btnrow:
 for t in today.select("button.oc-task"):
     t.decompose()
 for el in frag(
-    '<div class="oc-task oc-done"><div class="oc-ico">✓</div>'
+    f'<div class="oc-task oc-done"><div class="oc-ico">{icon("check")}</div>'
     '<div><b>Показания за апрель переданы</b><span>3 мая · на 4 дня раньше срока</span></div>'
     '<em class="oc-done-mark">Готово</em></div>'
-    '<div class="oc-task"><div class="oc-ico">₽</div>'
+    '<div class="oc-task"><div class="oc-ico oc-ico-rub">₽</div>'
     '<div><b>ЖКУ за апрель — 7 840 ₽</b><span>−12% к марту · без задолженности</span></div>'
     '<em class="oc-cta">Оплатить</em></div>'
-    '<div class="oc-task"><div class="oc-ico">💧</div>'
+    f'<div class="oc-task"><div class="oc-ico">{icon("drop")}</div>'
     '<div><b>Показания счётчиков</b><span>ХВС, ГВС и электричество · до 25 мая</span></div>'
     '<em class="oc-cta">Передать</em></div>'
-    '<div class="oc-task"><div class="oc-ico">🛠</div>'
+    f'<div class="oc-task"><div class="oc-ico">{icon("tool")}</div>'
     '<div><b>Поверка счётчика ХВС</b><span>через 42 дня · напомним заранее</span></div>'
     '<em class="oc-cta">Записаться</em></div>'):
     today.append(el)
@@ -163,9 +172,9 @@ for el in frag(
 # ---------- 6. «Оплата и показания» → «История квартиры» (актив, не дубль) ----------
 hist = block_by_h3("Оплата и показания")
 hist["id"] = "oc-history"
-must(".oc-section-label", hist).string = "История квартиры"
-must("h3", hist).string = "Паспорт квартиры заполнен на 80%"
-must(".oc-block-sub", hist).string = "12 документов и актов в архиве — пригодятся при продаже или сдаче."
+must(".oc-section-label", hist).decompose()
+must("h3", hist).string = "История квартиры"
+must(".oc-block-sub", hist).string = "Паспорт квартиры заполнен на 80% — 12 документов и актов пригодятся при продаже или сдаче."
 for t in hist.select("div.oc-task"):
     t.decompose()
 for el in frag(
@@ -183,21 +192,21 @@ for el in frag(
 
 # ---------- 7. «Сломалось дома»: мастера + экстренный режим (по сценарию 4.5) ----------
 svc = block_by_h3("Сломалось дома")
-must(".oc-section-label", svc).string = "Бытовые услуги"
+must(".oc-section-label", svc).decompose()
 must(".oc-block-sub", svc).string = "Мастер по вашему адресу — параметры квартиры уже заполнены."
 sctx = must(".oc-context", svc)
 sctx.clear()
 for el in frag(
-    '<div class="oc-flow-item"><div class="oc-ico">💧</div>'
+    f'<div class="oc-flow-item"><div class="oc-ico">{icon("drop")}</div>'
     '<div><b>Сантехник</b><span>Протечки, смесители, краны</span></div>'
     '<em class="oc-cta">Выбрать время</em></div>'
-    '<div class="oc-flow-item"><div class="oc-ico">⚡</div>'
+    f'<div class="oc-flow-item"><div class="oc-ico">{icon("bolt")}</div>'
     '<div><b>Электрик</b><span>Розетки, освещение, проводка</span></div>'
     '<em class="oc-cta">Выбрать время</em></div>'
-    '<div class="oc-flow-item"><div class="oc-ico">🧹</div>'
+    f'<div class="oc-flow-item"><div class="oc-ico">{icon("spark")}</div>'
     '<div><b>Клининг</b><span>После ремонта, перед сдачей или регулярно</span></div>'
     '<em class="oc-cta">Заказать</em></div>'
-    '<div class="oc-flow-item oc-sos"><div class="oc-ico">🚨</div>'
+    f'<div class="oc-flow-item oc-sos"><div class="oc-ico">{icon("alert")}</div>'
     '<div><b>Авария: прорыв трубы или замыкание</b>'
     '<span>Сразу соединим с дежурной службой и подскажем, как перекрыть воду</span></div>'
     '<em class="oc-cta oc-cta-sos">Позвонить</em></div>'):
@@ -237,30 +246,33 @@ override.string = """
 .oc-pulse-bar{display:block;height:6px;border-radius:3px;background:#e3ebe6;overflow:hidden;margin:2px 0;}
 .oc-pulse-bar i{display:block;height:100%;background:#21a038;border-radius:3px;}
 /* строки задач: жёсткая сетка иконка|текст|кнопка */
-.oc-task{text-align:left;grid-template-columns:40px 1fr auto;}
+.oc-task{text-align:left;grid-template-columns:40px 1fr auto;border-radius:14px;}
 .oc-task>div:nth-child(2){min-width:0;}
 .oc-task b{font-size:14.5px;}
 .oc-task span{font-size:12.5px;}
-.oc-task.oc-done{background:#f7faf8;border-style:dashed;}
-.oc-task.oc-done .oc-ico{background:#e8f6ec;color:#0b7f2a;font-weight:800;}
+.oc-task.oc-done{background:#f7faf8;border-color:#edf3ef;}
+.oc-task.oc-done .oc-ico{background:#e8f6ec;color:#0b7f2a;}
+.oc-ico{color:#1e9e3e;}
+.oc-ico svg{width:20px;height:20px;display:block;}
+.oc-ico-rub{font-weight:700;font-size:16px;}
 .oc-done-mark{font-style:normal;font-size:12.5px;font-weight:700;color:#0b7f2a;justify-self:end;}
 /* кнопки действий */
 em.oc-cta{font-style:normal;display:inline-flex;align-items:center;justify-content:center;
-  height:34px;padding:0 14px;border-radius:10px;background:#21a038;color:#fff;
+  height:34px;padding:0 14px;border-radius:12px;background:#21a038;color:#fff;min-width:118px;
   font-weight:700;font-size:13px;white-space:nowrap;justify-self:end;flex-shrink:0;}
 em.oc-cta-light{background:#e8f6ec;color:#0b7f2a;margin-top:10px;}
 em.oc-cta-sos{background:#e54d42;}
 /* рекомендации: бейдж-причина сверху, карточки равной структуры */
 button.oc-context-item{display:flex;flex-direction:column;align-items:stretch;gap:8px;text-align:left;}
 button.oc-context-item:after{content:none!important;}
-.oc-why{align-self:flex-start;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
-  color:#8a6d1f;background:#fdf3d7;border-radius:8px;padding:4px 8px;}
+.oc-why{align-self:flex-start;font-size:12px;font-weight:700;
+  color:#8a6d1f;background:#fdf6e3;border-radius:8px;padding:4px 10px;}
 button.oc-context-item>div:nth-child(2){display:flex;flex-direction:column;gap:3px;}
 button.oc-context-item b{font-size:14px;color:#17212b;}
 button.oc-context-item span{font-size:12.5px;color:#7b8a81;line-height:1.35;}
 /* услуги «Сломалось дома» */
 .oc-flow-item{display:flex;gap:12px;align-items:center;background:#fff;
-  border:1px solid #edf1ef;border-radius:16px;padding:13px;margin-top:10px;}
+  border:1px solid #edf1ef;border-radius:14px;padding:13px;margin-top:10px;}
 .oc-flow-item>div:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
 .oc-flow-item b{font-size:14px;color:#17212b;}
 .oc-flow-item span{font-size:12.5px;color:#7b8a81;line-height:1.35;}
@@ -277,7 +289,8 @@ button.oc-context-item span{font-size:12.5px;color:#7b8a81;line-height:1.35;}
 .oc-tl-item>div{display:flex;flex-direction:column;gap:1px;}
 .oc-tl-item b{font-size:14px;color:#17212b;}
 .oc-tl-item span{font-size:12.5px;color:#7b8a81;}
-/* aside */
+/* aside: липкая колонка — при скролле виджеты остаются на экране */
+.Xaae9{position:sticky;top:16px;align-self:flex-start;}
 .oc-sync{margin-top:12px;font-size:12.5px;color:#0b7f2a;background:#f0faf3;border-radius:10px;padding:8px 10px;}
 .oc-aside-card.oc-ins{margin-top:8px;}
 /* телефон: плитки пульса и всё прочее в столбец */
