@@ -74,12 +74,25 @@ must(".oc-aside-link", aside).decompose()
 for el in frag(
     '<div class="oc-sync">✓ Данные о квартире обновляются из СберБанк Онлайн</div>'):
     aside.append(el)
-# виджет страховки — текст родного виджета ДомКлик (вырезанного при санитизации)
+# виджеты колонки: страховка (текст родного виджета ДомКлик, вырезанного при
+# санитизации) + документы, кредит под залог и дом — нативный набор раздела
 aside.insert_after(*frag(
     '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Страхование</div>'
     '<h3 class="oc-aside-title">Защитите квартиру за 1 ₽</h3>'
     '<p class="oc-aside-text">Акция действует до 12 мая — первый месяц страховки за 1 ₽.</p>'
-    '<em class="oc-cta oc-cta-light">Подробнее</em></div>'))
+    '<em class="oc-cta oc-cta-light">Подробнее</em></div>'
+    '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Документы</div>'
+    '<h3 class="oc-aside-title">Архив квартиры — 12 файлов</h3>'
+    '<p class="oc-aside-text">Выписка ЕГРН, акты мастеров, полис и договоры — в одном месте.</p>'
+    '<em class="oc-cta oc-cta-light">Открыть архив</em></div>'
+    '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Кредит</div>'
+    '<h3 class="oc-aside-title">Кредит под залог квартиры</h3>'
+    '<p class="oc-aside-text">До 7,4 млн ₽ под залог вашей квартиры — решение онлайн.</p>'
+    '<em class="oc-cta oc-cta-light">Рассчитать</em></div>'
+    '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Дом и район</div>'
+    '<h3 class="oc-aside-title">Ваш дом: рейтинг 4,6</h3>'
+    '<p class="oc-aside-text">Плановое отключение горячей воды 15–17 июня — напомним заранее.</p>'
+    '<em class="oc-cta oc-cta-light">Все события дома</em></div>'))
 
 # ---------- 3. Шапка: hero «Пульс дома» вместо сабтайтла-лендинга ----------
 head = must(".oc-after-head")
