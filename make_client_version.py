@@ -207,6 +207,8 @@ button.oc-context-item:after{content:'→';margin-left:auto;color:#21a038;font-w
   font-size:14px;text-decoration:none;margin-top:12px;}
 /* на узких окнах родная media-query сжимает грид задач — вернуть колонку кнопки */
 @media(max-width:900px){.oc-task{grid-template-columns:40px 1fr auto;}}
+/* телефон (виртуальный вьюпорт ~980): блоки в одну колонку, задачи во всю ширину */
+@media(max-width:1100px){.oc-after-grid{grid-template-columns:1fr!important;}}
 """
 soup.head.append(override)
 # скролл к сценариям уже делает родной скрипт прототипа (openScenario + .oc-focus);
