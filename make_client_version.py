@@ -1,171 +1,196 @@
 # -*- coding: utf-8 -*-
-"""Сборка клиентской версии прототипа «Домовой центр».
+"""Сборка клиентской версии прототипа «Домовой центр» (вариант «Пульс дома»).
 
-Из учебной версии (domclick_myhome_after_1to1.html) убираются все аннотации
-для жюри/команды (бейджи «НОВОЕ», «Гипотеза…», внутренние метрики, «было/стало»),
-тексты переписываются на клиентские, зелёная подсветка нового заменяется
-нативным стилем карточек Домклик. Результат: domclick_myhome_client.html.
+Из учебной версии (domclick_myhome_after_1to1.html) убираются аннотации,
+страница перекомпоновывается под пользовательский флоу:
+hero-агрегат (оценка квартиры, прогресс месяца, экономия) → лента задач
+со статусами → рекомендации с причинами → история квартиры → «Сломалось дома».
+Результат: domclick_myhome_client.html.
 
 Запуск: /usr/bin/python3 make_client_version.py  (нужны bs4 + lxml)
 """
 import sys
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 
 SRC = "prototype/domclick_myhome_after_1to1.html"
 DST = "prototype/domclick_myhome_client.html"
 
 soup = BeautifulSoup(open(SRC, encoding="utf-8").read(), "lxml")
 
-# ---------- 1. Удаляем учебные элементы ----------
+MISSES = []
+
+
 def kill(*selectors):
     for sel in selectors:
         for el in soup.select(sel):
             el.decompose()
 
-kill(
-    ".coursework-static-note",          # плашка «Статичная учебная копия»
-    ".oc-aside-card.oc-aside-logic",    # карточка «Логика первой версии»
-    ".oc-real-badge",                   # бейдж «Новая вкладка внутри…»
-    ".oc-after-eyebrow",                # «Гипотеза на основе исследования»
-    ".oc-research",                     # внутренние метрики (942 тыс., 6 491…)
-    ".oc-proof",                        # «Почему именно так…»
-    ".oc-note",                         # «Вывод из исследования…»
-    ".oc-mini-status",                  # «Нажмите на любую плашку — прототип покажет…»
-    "#oc-flow-history",                 # секция «было/стало»
-)
-# кнопка «Почему это лучше» (вела на удалённую секцию)
-for btn in soup.select('[data-oc-target="oc-flow-history"]'):
-    btn.decompose()
 
-# ---------- 2. Переписываем тексты на клиентские ----------
-MISSES = []
-
-def set_text(selector, old_substr, new_text):
-    for el in soup.select(selector):
-        if old_substr in el.get_text():
-            el.string = new_text
-            return True
-    MISSES.append(f"{selector} :: {old_substr[:40]}")
-    print(f"  !! не найдено: {selector} :: {old_substr[:40]}")
-    return False
-
-set_text(".oc-after-sub", "Решение - добавить",
-         "Оплачивайте ЖКУ, передавайте показания и решайте бытовые вопросы — "
-         "всё по вашему адресу и в пару касаний.")
-
-set_text(".oc-block-sub", "Блок выводит задачи",
-         "Напомним о платежах, показаниях и сроках — и поможем закрыть всё сразу.")
-
-set_text(".oc-block-sub", "Не холодная витрина",
-         "Подсказываем услуги в нужный момент — адрес и параметры квартиры уже заполнены.")
-
-set_text(".oc-section-label", "Сценарий: ЖКУ и показания", "ЖКУ и счётчики")
-set_text(".oc-block-sub", "ЖКУ выбран как главный частотный",
-         "Начисления, оплата и передача показаний — в одном месте, с напоминаниями каждый месяц.")
-
-set_text(".oc-section-label", "Сценарий: бытовые задачи", "Бытовые услуги")
-set_text(".oc-block-sub", "Мастер и клининг взяты",
-         "Мастер на час, клининг и подготовка квартиры к сдаче — по вашему адресу.")
-
-# ---------- 3. Перекомпоновка: один источник задач, действие в каждой строке ----------
 def frag(html):
     """Фрагмент → список тегов (html.parser не оборачивает в <html><body>)."""
     return list(BeautifulSoup(html, "html.parser").children)
+
 
 def block_by_h3(substr):
     for b in soup.select(".oc-after-block"):
         h = b.find("h3")
         if h and substr in h.get_text():
             return b
-    raise SystemExit(f"FAILED: не найден блок «{substr}»")
+    print(f"FAILED: не найден блок «{substr}»")
+    sys.exit(1)
 
-# 3.1 aside: вместо дубля списка задач — карточка квартиры со ссылкой на задачи
-aside = soup.select_one(".oc-aside-card")
-aside.select_one(".oc-aside-title").string = "Ваша квартира"
-aside.select_one(".oc-aside-text").string = "улица Примерная, 10, кв. 1 · 61,4 м² · 14/18 этаж"
-aside.select_one(".oc-aside-list").decompose()
-alink = aside.select_one(".oc-aside-link")
-alink.string = "3 задачи на май — открыть"
-alink["data-oc-target"] = "oc-block-today"
-alink["href"] = "#oc-block-today"
 
-# 3.2 «Сегодня по дому»: адресный чип не нужен (адрес в карточке слева),
-# у каждой задачи — своя кнопка действия, общий ряд кнопок убираем
+def must(selector, root=None):
+    el = (root or soup).select_one(selector)
+    if el is None:
+        print(f"FAILED: не найден {selector}")
+        sys.exit(1)
+    return el
+
+
+# ---------- 1. Удаляем учебные элементы ----------
+kill(
+    ".coursework-static-note",          # плашка «Статичная учебная копия»
+    ".oc-aside-card.oc-aside-logic",    # карточка «Логика первой версии»
+    ".oc-real-badge",                   # бейдж «Новая вкладка внутри…»
+    ".oc-after-eyebrow",                # «Гипотеза на основе исследования»
+    ".oc-research",                     # внутренние метрики
+    ".oc-proof",                        # «Почему именно так…»
+    ".oc-note",                         # «Вывод из исследования…»
+    ".oc-mini-status",                  # подсказка про плашки
+    "#oc-flow-history",                 # секция «было/стало»
+    ".oc-actions",                      # ряд-дубль Сантехник/Электрик/Клининг
+)
+for btn in soup.select('[data-oc-target="oc-flow-history"]'):
+    btn.decompose()
+
+# ---------- 2. Aside: компактная карточка квартиры + нативные виджеты ----------
+aside = must(".oc-aside-card")
+must(".oc-aside-title", aside).string = "Ваша квартира"
+must(".oc-aside-text", aside).string = "улица Примерная, 10, кв. 1 · 61,4 м² · 14/18 этаж"
+must(".oc-aside-list", aside).decompose()
+must(".oc-aside-link", aside).decompose()
+for el in frag(
+    '<div class="oc-sync">✓ Данные о квартире обновляются из СберБанк Онлайн</div>'):
+    aside.append(el)
+# виджет страховки — текст родного виджета ДомКлик (вырезанного при санитизации)
+aside.insert_after(*frag(
+    '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Страхование</div>'
+    '<h3 class="oc-aside-title">Защитите квартиру за 1 ₽</h3>'
+    '<p class="oc-aside-text">Акция действует до 12 мая — первый месяц страховки за 1 ₽.</p>'
+    '<em class="oc-cta oc-cta-light">Подробнее</em></div>'))
+
+# ---------- 3. Шапка: hero «Пульс дома» вместо сабтайтла-лендинга ----------
+head = must(".oc-after-head")
+sub = head.select_one(".oc-after-sub")
+if sub:
+    sub.decompose()
+head.append(frag(
+    '<div class="oc-pulse">'
+    '<div class="oc-pulse-status"><i class="oc-dot"></i>С домом всё в порядке'
+    '<span class="oc-pulse-addr">улица Примерная, 10, кв. 1</span></div>'
+    '<div class="oc-pulse-grid">'
+    '<div class="oc-pulse-tile"><span class="oc-pulse-label">Оценка квартиры</span>'
+    '<b class="oc-pulse-num">9,24 млн ₽</b>'
+    '<span class="oc-pulse-note oc-up">+312 000 ₽ за год (+3,5%)</span></div>'
+    '<div class="oc-pulse-tile"><span class="oc-pulse-label">Май по дому</span>'
+    '<b class="oc-pulse-num">1 из 3</b>'
+    '<span class="oc-pulse-bar"><i style="width:33%"></i></span>'
+    '<span class="oc-pulse-note">следующее — показания до 25 мая</span></div>'
+    '<div class="oc-pulse-tile"><span class="oc-pulse-label">Сэкономлено с Домклик</span>'
+    '<b class="oc-pulse-num">3 412 ₽</b>'
+    '<span class="oc-pulse-note">за 2026 год · пеней 0 ₽</span></div>'
+    '</div></div>')[0])
+
+# ---------- 4. «Сегодня по дому»: статусы + три задачи с кнопками ----------
 today = block_by_h3("Сегодня по дому")
 today["id"] = "oc-block-today"
-today.select_one(".oc-section-label").decompose()
+must(".oc-section-label", today).decompose()      # адрес теперь в hero
+must(".oc-block-sub", today).string = "Напомним о платежах, показаниях и сроках — и поможем закрыть всё сразу."
 btnrow = today.select_one(".oc-btnrow")
-if btnrow: btnrow.decompose()
-CTA_BY_TASK = [("Передать показания", "Передать"),
-               ("Оплатить ЖКУ", "Оплатить"),
-               ("поверк", "Записаться")]
+if btnrow:
+    btnrow.decompose()
 for t in today.select("button.oc-task"):
-    tag = t.select_one("em.oc-tag")
-    if tag: tag.decompose()
-    txt = t.get_text()
-    for needle, word in CTA_BY_TASK:
-        if needle.lower() in txt.lower():
-            t.append(frag(f'<em class="oc-cta">{word}</em>')[0])
-            break
-    if "поверк" in txt.lower():  # поверка — это про счётчики, ведём в блок ЖКУ
-        t["data-oc-target"] = "oc-flow-jku"
-        t.find("b").string = "Поверка счётчика ХВС"
-        t.find("span").string = "Через 42 дня · запись к мастеру за пару минут"
-
-# 3.3 «Сервисы из события» → «Рекомендации»; карточку-дубль поверки
-# заменяем рекомендацией из события (рост расходов → умный дом)
-rec = block_by_h3("Сервисы из события")
-rec.select_one(".oc-section-label").decompose()
-rec.find("h3").string = "Рекомендации для вашей квартиры"
-items = rec.select(".oc-context-item")
-items[0].select("b")[0].string = "Расходы за апрель"
-items[0].select("span")[0].string = "Сравните с прошлым месяцем и включите автонапоминания."
-ic1 = items[1].find("div")
-ic1.string = "🛡"
-items[1].select("b")[0].string = "Умный дом для квартиры"
-items[1].select("span")[0].string = "Датчики протечки и умные счётчики — расходы под контролем."
-items[1]["data-oc-target"] = "oc-flow-jku"
-
-# 3.4 ряд «Сантехник/Электрик/Клининг» — дубль блока «Сломалось дома», убираем
-soup.select_one(".oc-actions").decompose()
-
-# 3.5 «Оплата и показания»: вместо процессных шагов — действия с кнопками
-jkublk = block_by_h3("Оплата и показания")
-for t in jkublk.select("div.oc-task"):
     t.decompose()
 for el in frag(
+    '<div class="oc-task oc-done"><div class="oc-ico">✓</div>'
+    '<div><b>Показания за апрель переданы</b><span>3 мая · на 4 дня раньше срока</span></div>'
+    '<em class="oc-done-mark">Готово</em></div>'
     '<div class="oc-task"><div class="oc-ico">₽</div>'
-    '<div><b>ЖКУ за апрель — 7 840 ₽</b><span>Начислено без задолженности · можно включить автоплатёж</span></div>'
+    '<div><b>ЖКУ за апрель — 7 840 ₽</b><span>−12% к марту · без задолженности</span></div>'
     '<em class="oc-cta">Оплатить</em></div>'
     '<div class="oc-task"><div class="oc-ico">💧</div>'
-    '<div><b>Показания: вода и электричество</b><span>До 25 мая · напомним за три дня до срока</span></div>'
+    '<div><b>Показания счётчиков</b><span>ХВС, ГВС и электричество · до 25 мая</span></div>'
     '<em class="oc-cta">Передать</em></div>'
     '<div class="oc-task"><div class="oc-ico">🛠</div>'
-    '<div><b>Поверка счётчика ХВС</b><span>Через 42 дня · проверенные мастера с гарантией</span></div>'
+    '<div><b>Поверка счётчика ХВС</b><span>через 42 дня · напомним заранее</span></div>'
     '<em class="oc-cta">Записаться</em></div>'):
-    jkublk.append(el)
+    today.append(el)
 
-# 3.6 «Сломалось дома»: каталог из четырёх услуг, у каждой — кнопка
-svc = block_by_h3("Сломалось дома")
-ctx = svc.select_one(".oc-context")
+# ---------- 5. Рекомендации: причина → совет → выгода ----------
+rec = block_by_h3("Сервисы из события")
+must(".oc-section-label", rec).decompose()
+must("h3", rec).string = "Рекомендации для вашей квартиры"
+must(".oc-block-sub", rec).string = "Подсказываем в нужный момент — по событиям вашей квартиры."
+ctx = must(".oc-context", rec)
 ctx.clear()
 for el in frag(
-    '<div class="oc-flow-item"><div class="oc-ico">💧</div>'
-    '<div><b>Сантехник</b><span>Протечки, смесители и поверка — адрес уже заполнен</span></div>'
-    '<em class="oc-cta">Выбрать время</em></div>'
-    '<div class="oc-flow-item"><div class="oc-ico">⚡</div>'
-    '<div><b>Электрик</b><span>Розетки, освещение и проводка</span></div>'
-    '<em class="oc-cta">Выбрать время</em></div>'
-    '<div class="oc-flow-item"><div class="oc-ico">🧹</div>'
-    '<div><b>Клининг</b><span>После ремонта, перед сдачей или регулярная уборка</span></div>'
-    '<em class="oc-cta">Заказать</em></div>'
-    '<div class="oc-flow-item"><div class="oc-ico">🏠</div>'
-    '<div><b>Подготовить к сдаче</b><span>Клининг, мелкий ремонт, фото и договор — одним пакетом</span></div>'
-    '<em class="oc-cta">Собрать пакет</em></div>'):
+    '<button class="oc-context-item oc-clickable" data-oc-target="oc-flow-services" type="button">'
+    '<div class="oc-why">Расход ГВС +18% к марту</div>'
+    '<div><b>Проверьте смеситель</b><span>Возможна протечка · сантехник в четверг, от 1 200 ₽</span></div></button>'
+    '<button class="oc-context-item oc-clickable" data-oc-target="oc-flow-services" type="button">'
+    '<div class="oc-why">Поверка через 42 дня</div>'
+    '<div><b>Запишитесь в мае</b><span>Слоты у мастеров в мае на 15% дешевле</span></div></button>'
+    '<button class="oc-context-item oc-clickable" data-oc-target="oc-flow-services" type="button">'
+    '<div class="oc-why">Вы смотрели раздел «Аренда»</div>'
+    '<div><b>Сдайте квартиру с Домклик</b><span>Пакет подготовки 12 900 ₽ — окупается за 4 дня аренды</span></div></button>'):
     ctx.append(el)
 
-# ---------- 4. Нативный стиль вместо «зелёной подсветки нового» ----------
+# ---------- 6. «Оплата и показания» → «История квартиры» (актив, не дубль) ----------
+hist = block_by_h3("Оплата и показания")
+hist["id"] = "oc-history"
+must(".oc-section-label", hist).string = "История квартиры"
+must("h3", hist).string = "Паспорт квартиры заполнен на 80%"
+must(".oc-block-sub", hist).string = "12 документов и актов в архиве — пригодятся при продаже или сдаче."
+for t in hist.select("div.oc-task"):
+    t.decompose()
+for el in frag(
+    '<div class="oc-tl">'
+    '<div class="oc-tl-item"><span class="oc-tl-date">3 мая</span>'
+    '<div><b>Показания переданы</b><span>12 месяцев подряд без пропусков</span></div></div>'
+    '<div class="oc-tl-item"><span class="oc-tl-date">12 апр</span>'
+    '<div><b>Поверка ГВС пройдена</b><span>акт мастера — в архиве квартиры</span></div></div>'
+    '<div class="oc-tl-item"><span class="oc-tl-date">фев</span>'
+    '<div><b>Замена смесителя</b><span>мастер Домклик · гарантия до 02.2027</span></div></div>'
+    '<div class="oc-tl-item"><span class="oc-tl-date">янв</span>'
+    '<div><b>Страховка продлена</b><span>полис действует до января 2027</span></div></div>'
+    '</div>'):
+    hist.append(el)
+
+# ---------- 7. «Сломалось дома»: мастера + экстренный режим (по сценарию 4.5) ----------
+svc = block_by_h3("Сломалось дома")
+must(".oc-section-label", svc).string = "Бытовые услуги"
+must(".oc-block-sub", svc).string = "Мастер по вашему адресу — параметры квартиры уже заполнены."
+sctx = must(".oc-context", svc)
+sctx.clear()
+for el in frag(
+    '<div class="oc-flow-item"><div class="oc-ico">💧</div>'
+    '<div><b>Сантехник</b><span>Протечки, смесители, краны</span></div>'
+    '<em class="oc-cta">Выбрать время</em></div>'
+    '<div class="oc-flow-item"><div class="oc-ico">⚡</div>'
+    '<div><b>Электрик</b><span>Розетки, освещение, проводка</span></div>'
+    '<em class="oc-cta">Выбрать время</em></div>'
+    '<div class="oc-flow-item"><div class="oc-ico">🧹</div>'
+    '<div><b>Клининг</b><span>После ремонта, перед сдачей или регулярно</span></div>'
+    '<em class="oc-cta">Заказать</em></div>'
+    '<div class="oc-flow-item oc-sos"><div class="oc-ico">🚨</div>'
+    '<div><b>Авария: прорыв трубы или замыкание</b>'
+    '<span>Сразу соединим с дежурной службой и подскажем, как перекрыть воду</span></div>'
+    '<em class="oc-cta oc-cta-sos">Позвонить</em></div>'):
+    sctx.append(el)
+
+# ---------- 8. CSS: нативный стиль + новые компоненты ----------
 override = soup.new_tag("style", id="oc-client-overrides")
 override.string = """
 /* Клиентская версия: нативные карточки Домклик вместо подсветки нового */
@@ -175,22 +200,52 @@ override.string = """
 .oc-aside-card:after{content:none!important;}
 .oc-after-block.oc-proposed-block:after{content:none!important;}
 .oc-after-block.oc-proposed-block{border:1px solid #e7ece9;background:#fff;}
-.oc-after-head{margin-bottom:14px;}
-/* мягкая нативная подсветка при переходе к сценарию вместо жирной зелёной рамки */
+.oc-after-head{margin-bottom:14px;display:block!important;}
+.oc-after-head h1,.oc-after-head h2{margin-bottom:10px;}
 .oc-focus{outline:none!important;border:1px solid #21a038!important;background:#fff!important;
   box-shadow:0 0 0 1px #21a038, 0 8px 24px rgba(23,33,43,.08)!important;}
-/* лейблы нижних секций: спокойный оверлайн вместо псевдокнопки-чипа */
+/* секции друг под другом во всю ширину — карточки не пляшут по высоте */
+.oc-after-grid{grid-template-columns:1fr!important;}
+/* лейблы секций: спокойный оверлайн */
 .oc-section-label{background:transparent;color:#7b8a81;padding:0;border-radius:0;
   font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}
-/* текст задач — слева (дефолт button центрирует) */
-.oc-task{text-align:left;}
+/* hero «Пульс дома» */
+.oc-pulse{margin-top:14px;}
+.oc-pulse-status{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:#17212b;}
+.oc-dot{width:10px;height:10px;border-radius:50%;background:#21a038;flex-shrink:0;}
+.oc-pulse-addr{margin-left:auto;font-weight:400;font-size:13px;color:#7b8a81;}
+.oc-pulse-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;}
+.oc-pulse-tile{display:flex;flex-direction:column;gap:4px;background:#f7faf8;border:1px solid #edf1ef;
+  border-radius:16px;padding:14px 16px;min-width:0;}
+.oc-pulse-label{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7b8a81;}
+.oc-pulse-num{font-size:22px;font-weight:800;color:#17212b;line-height:1.1;}
+.oc-pulse-note{font-size:12px;color:#7b8a81;line-height:1.3;}
+.oc-pulse-note.oc-up{color:#0b7f2a;font-weight:700;}
+.oc-pulse-bar{display:block;height:6px;border-radius:3px;background:#e3ebe6;overflow:hidden;margin:2px 0;}
+.oc-pulse-bar i{display:block;height:100%;background:#21a038;border-radius:3px;}
+/* строки задач: жёсткая сетка иконка|текст|кнопка */
+.oc-task{text-align:left;grid-template-columns:40px 1fr auto;}
 .oc-task>div:nth-child(2){min-width:0;}
-/* кнопка действия в строке задачи/услуги */
+.oc-task b{font-size:14.5px;}
+.oc-task span{font-size:12.5px;}
+.oc-task.oc-done{background:#f7faf8;border-style:dashed;}
+.oc-task.oc-done .oc-ico{background:#e8f6ec;color:#0b7f2a;font-weight:800;}
+.oc-done-mark{font-style:normal;font-size:12.5px;font-weight:700;color:#0b7f2a;justify-self:end;}
+/* кнопки действий */
 em.oc-cta{font-style:normal;display:inline-flex;align-items:center;justify-content:center;
   height:34px;padding:0 14px;border-radius:10px;background:#21a038;color:#fff;
   font-weight:700;font-size:13px;white-space:nowrap;justify-self:end;flex-shrink:0;}
-button.oc-task:hover em.oc-cta{background:#1b8a30;}
-/* карточка услуги в «Сломалось дома» */
+em.oc-cta-light{background:#e8f6ec;color:#0b7f2a;margin-top:10px;}
+em.oc-cta-sos{background:#e54d42;}
+/* рекомендации: бейдж-причина сверху, карточки равной структуры */
+button.oc-context-item{display:flex;flex-direction:column;align-items:stretch;gap:8px;text-align:left;}
+button.oc-context-item:after{content:none!important;}
+.oc-why{align-self:flex-start;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  color:#8a6d1f;background:#fdf3d7;border-radius:8px;padding:4px 8px;}
+button.oc-context-item>div:nth-child(2){display:flex;flex-direction:column;gap:3px;}
+button.oc-context-item b{font-size:14px;color:#17212b;}
+button.oc-context-item span{font-size:12.5px;color:#7b8a81;line-height:1.35;}
+/* услуги «Сломалось дома» */
 .oc-flow-item{display:flex;gap:12px;align-items:center;background:#fff;
   border:1px solid #edf1ef;border-radius:16px;padding:13px;margin-top:10px;}
 .oc-flow-item>div:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
@@ -198,34 +253,50 @@ button.oc-task:hover em.oc-cta{background:#1b8a30;}
 .oc-flow-item span{font-size:12.5px;color:#7b8a81;line-height:1.35;}
 .oc-flow-item .oc-ico{width:40px;height:40px;border-radius:12px;background:#f2f7f4;
   display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
-/* рекомендация: стрелка-аффорданс перехода */
-button.oc-context-item{align-items:center;}
-button.oc-context-item:after{content:'→';margin-left:auto;color:#21a038;font-weight:800;font-size:16px;}
-/* кнопка-ссылка в карточке квартиры */
-.oc-aside-link{display:inline-flex;align-items:center;justify-content:center;width:100%;
-  height:44px;border-radius:14px;background:#21a038;color:#fff!important;font-weight:700;
-  font-size:14px;text-decoration:none;margin-top:12px;}
-/* на узких окнах родная media-query сжимает грид задач — вернуть колонку кнопки */
-@media(max-width:900px){.oc-task{grid-template-columns:40px 1fr auto;}}
-/* телефон (виртуальный вьюпорт ~980): блоки в одну колонку, задачи во всю ширину */
-@media(max-width:1100px){.oc-after-grid{grid-template-columns:1fr!important;}}
+.oc-flow-item.oc-sos{background:#fdf2f1;border-color:#f6d9d6;}
+.oc-flow-item.oc-sos .oc-ico{background:#fbe4e2;}
+/* история-таймлайн */
+.oc-tl{margin-top:12px;border-left:2px solid #e3ebe6;padding-left:14px;display:flex;flex-direction:column;gap:12px;}
+.oc-tl-item{position:relative;display:flex;gap:12px;align-items:baseline;}
+.oc-tl-item:before{content:'';position:absolute;left:-19px;top:4px;width:8px;height:8px;border-radius:50%;
+  background:#21a038;border:2px solid #fff;}
+.oc-tl-date{flex-shrink:0;width:52px;font-size:12px;font-weight:700;color:#7b8a81;}
+.oc-tl-item>div{display:flex;flex-direction:column;gap:1px;}
+.oc-tl-item b{font-size:14px;color:#17212b;}
+.oc-tl-item span{font-size:12.5px;color:#7b8a81;}
+/* aside */
+.oc-sync{margin-top:12px;font-size:12.5px;color:#0b7f2a;background:#f0faf3;border-radius:10px;padding:8px 10px;}
+.oc-aside-card.oc-ins{margin-top:8px;}
+/* телефон: плитки пульса и всё прочее в столбец */
+@media(max-width:1100px){
+  .oc-pulse-grid{grid-template-columns:1fr;}
+  .oc-pulse-addr{display:none;}
+  .oc-task{grid-template-columns:40px 1fr auto;}
+}
 """
 soup.head.append(override)
-# скролл к сценариям уже делает родной скрипт прототипа (openScenario + .oc-focus);
-# свой слушатель не добавляем — родной перехватывает клики в capture-фазе.
+# скролл к сценариям делает родной скрипт прототипа (openScenario + .oc-focus)
 
-# ---------- 5. Служебное: noindex + честный комментарий ----------
+# ---------- 9. Служебное: noindex + честный комментарий ----------
 meta = soup.new_tag("meta")
 meta.attrs["name"] = "robots"
 meta.attrs["content"] = "noindex, nofollow"
 soup.head.insert(0, meta)
-from bs4 import Comment
 soup.body.insert(0, Comment(
     " Учебный прототип курсового проекта ВШБ НИУ ВШЭ (команда 2). "
-    "Не является сайтом domclick.ru. Демонстрация концепции «Домовой центр». "))
+    "Не является сайтом domclick.ru. Демонстрация концепции «Домовой центр». "
+    "Все цифры — демонстрационные данные. "))
+
+# ---------- 10. Контроль ----------
+for ref in soup.select("[data-oc-target]"):
+    t = ref.get("data-oc-target")
+    if not soup.find(id=t):
+        MISSES.append(f"dangling target: {t}")
 
 if MISSES:
-    print(f"FAILED: {len(MISSES)} замен не нашли цель — файл не сохраняю")
+    print(f"FAILED: {len(MISSES)} проблем — файл не сохраняю")
+    for m in MISSES:
+        print("  -", m)
     sys.exit(1)
 
 open(DST, "w", encoding="utf-8").write(str(soup))
