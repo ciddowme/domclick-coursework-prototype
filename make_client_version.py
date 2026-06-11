@@ -94,11 +94,11 @@ for el in frag(
 # виджеты колонки: страховка (текст родного виджета ДомКлик, вырезанного при
 # санитизации) + документы, кредит под залог и дом — нативный набор раздела
 aside.insert_after(*frag(
-    '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Страхование</div>'
+    '<div class="oc-aside-card oc-ins oc-card-ins"><div class="oc-aside-kicker">Страхование</div>'
     '<h3 class="oc-aside-title">Защитите квартиру за 1 ₽</h3>'
     '<p class="oc-aside-text">Акция действует до 12 мая — первый месяц страховки за 1 ₽.</p>'
     '<em class="oc-cta oc-cta-light">Подробнее</em></div>'
-    '<div class="oc-aside-card oc-ins"><div class="oc-aside-kicker">Документы</div>'
+    '<div class="oc-aside-card oc-ins oc-card-docs"><div class="oc-aside-kicker">Документы</div>'
     '<h3 class="oc-aside-title">Архив квартиры — 12 файлов</h3>'
     '<p class="oc-aside-text">Выписка ЕГРН, акты мастеров, полис и договоры — в одном месте.</p>'
     '<em class="oc-cta oc-cta-light">Открыть архив</em></div>'))
@@ -321,10 +321,16 @@ button.oc-context-item span{font-size:12.5px;color:#7b8a81;line-height:1.35;}
   [class*="tabs-head"]::before,[class*="tabs-head"]::after{display:none!important;content:none!important;}
   .S294i,nav.z2DlB,.tabs-tabs-d69-16-1-0,[class*="tabs-head"]{
     border-radius:0!important;background:#fff!important;box-shadow:none!important;}
-  /* колонки aside+main складываем в столбец */
-  .f7T8t{display:block!important;}
-  .Xaae9{position:static!important;width:100%!important;max-width:none!important;}
-  .f7T8t>div{width:100%!important;max-width:none!important;}
+  /* колонки в один столбец и пересортировка карточек под мобильный сценарий */
+  .f7T8t{display:flex!important;flex-direction:column!important;gap:12px!important;}
+  .Xaae9,section.Q619h,.oc-after-wrap{display:contents!important;}
+  .Xaae9{position:static!important;}
+  .oc-aside-card:not(.oc-ins){order:1;}
+  section.oc-after-card:not(#oc-flow-jku){order:2;}
+  .oc-card-ins{order:3;}
+  section#oc-flow-jku{order:4;}
+  .oc-card-docs{order:5;}
+  .oc-aside-card,.oc-after-card{width:auto!important;max-width:none!important;margin:0!important;}
   main.EMAJl{padding-left:12px!important;padding-right:12px!important;}
   /* табы: горизонтальная прокрутка вместо переноса */
   .tabs-buttons-fc1-16-1-0{overflow-x:auto;flex-wrap:nowrap!important;white-space:nowrap;
