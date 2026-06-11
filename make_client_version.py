@@ -103,6 +103,12 @@ aside.insert_after(*frag(
     '<p class="oc-aside-text">Выписка ЕГРН, акты мастеров, полис и договоры — в одном месте.</p>'
     '<em class="oc-cta oc-cta-light">Открыть архив</em></div>'))
 
+# ---------- 2.5. Мобильная шапка-замена (родная topline не адаптивна) ----------
+native_header = must("header.tpln-main-topline--12-2-0")
+native_header.insert_before(*frag(
+    '<div class="oc-mhead"><img class="oc-mhead-logo" src="../Основное_files/domclick-logo.svg" alt="Домклик"/>'
+    '<span class="oc-mhead-sub">Моя недвижимость</span></div>'))
+
 # ---------- 3. Шапка: hero «Пульс дома» вместо сабтайтла-лендинга ----------
 head = must(".oc-after-head")
 sub = head.select_one(".oc-after-sub")
@@ -298,6 +304,46 @@ button.oc-context-item span{font-size:12.5px;color:#7b8a81;line-height:1.35;}
   .oc-pulse-grid{grid-template-columns:1fr;}
   .oc-pulse-addr{display:none;}
   .oc-task{grid-template-columns:40px 1fr auto;}
+}
+/* наша мобильная шапка: на десктопе скрыта */
+.oc-mhead{display:none;}
+/* мобильная вёрстка: родную desktop-шапку и фото-обложку прячем, кнопки во всю ширину */
+@media(max-width:760px){
+  header.tpln-main-topline--12-2-0{display:none!important;}
+  .oc-mhead{display:flex;align-items:center;gap:10px;padding:12px 16px;
+    background:#fff;border-bottom:1px solid #edf1ef;}
+  .oc-mhead-logo{height:26px;width:auto;display:block;}
+  .oc-mhead-sub{font-size:13px;color:#7b8a81;}
+  .hklFO{display:none!important;}
+  /* декоративные тёмные уголки табов (рассчитаны на фото-подложку) */
+  .S294i::before,.S294i::after,nav.z2DlB::before,nav.z2DlB::after,
+  .tabs-tabs-d69-16-1-0::before,.tabs-tabs-d69-16-1-0::after,
+  [class*="tabs-head"]::before,[class*="tabs-head"]::after{display:none!important;content:none!important;}
+  .S294i,nav.z2DlB,.tabs-tabs-d69-16-1-0,[class*="tabs-head"]{
+    border-radius:0!important;background:#fff!important;box-shadow:none!important;}
+  /* колонки aside+main складываем в столбец */
+  .f7T8t{display:block!important;}
+  .Xaae9{position:static!important;width:100%!important;max-width:none!important;}
+  .f7T8t>div{width:100%!important;max-width:none!important;}
+  main.EMAJl{padding-left:12px!important;padding-right:12px!important;}
+  /* табы: горизонтальная прокрутка вместо переноса */
+  .tabs-buttons-fc1-16-1-0{overflow-x:auto;flex-wrap:nowrap!important;white-space:nowrap;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .tabs-buttons-fc1-16-1-0::-webkit-scrollbar{display:none;}
+  /* наш слой: воздух и читаемость */
+  .oc-after-head h1,.oc-after-head h2{font-size:24px;}
+  .oc-pulse-num{font-size:20px;}
+  .oc-pulse-status{font-size:14px;}
+  /* задачи: текст во всю ширину, кнопка отдельной строкой */
+  .oc-task{grid-template-columns:40px 1fr;}
+  .oc-task em.oc-cta{grid-column:1/-1;width:100%;margin-top:10px;height:40px;}
+  .oc-task.oc-done{grid-template-columns:40px 1fr auto;}
+  /* услуги аналогично */
+  .oc-flow-item{flex-wrap:wrap;}
+  .oc-flow-item em.oc-cta{width:100%;margin-top:10px;height:40px;}
+  /* рекомендации и карточки — компактнее */
+  button.oc-context-item{padding:12px;}
+  .oc-tl-date{width:46px;font-size:11px;}
 }
 """
 soup.head.append(override)
